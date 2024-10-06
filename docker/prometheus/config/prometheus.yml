@@ -1,0 +1,59 @@
+global:
+  scrape_interval: 30s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 30s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  scrape_timeout: 30s
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+           - alertmanager:9093
+
+rule_files:
+    - "alert_rules.yml"
+scrape_configs:
+  - job_name: "prometheus"
+    scheme: http
+    static_configs:
+      - targets: ["nms.yourdomain.com:9090"]
+
+##########################################################      SNMP Exporter (To get data from SNMP service)
+  - job_name: 'snmp'
+    scheme: http
+    scrape_interval: 20s
+    scrape_timeout: 20s
+    file_sd_configs:
+      - files:
+          - 'snmp_files/snmp.yml'
+    metrics_path: /snmp
+    params:
+      auth: [public_v2]
+      module: [if_mib,arista_sw,ddwrt]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: nms.yourdomain.com:9116
+
+##########################################################      BlackBox Exporter (For ports/ping and services monitoring)
+  - job_name: 'blackbox'
+    scheme: http
+    scrape_interval: 15s
+    scrape_timeout: 15s
+    file_sd_configs:
+      - files:
+          - 'blackbox_files/ping.yml'
+    metrics_path: /probe
+    params:
+            module: [icmp]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: nms.yourdomain:9115
+
